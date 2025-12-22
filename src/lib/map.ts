@@ -79,8 +79,16 @@ const FIPS_TO_NAME: Record<string, string> = {
   '56': 'Wyoming',
 };
 
-// States to exclude (outliers due to extreme latitudes)
-const EXCLUDED_STATE_FIPS = new Set(['02', '15', '72']); // Alaska, Hawaii, Puerto Rico
+// States/territories to exclude (non-contiguous US)
+const EXCLUDED_STATE_FIPS = new Set([
+  '02', // Alaska
+  '15', // Hawaii
+  '60', // American Samoa
+  '66', // Guam
+  '69', // Northern Mariana Islands
+  '72', // Puerto Rico
+  '78', // US Virgin Islands
+]);
 
 // Cache for prepared features
 let cachedCountyFeatures: CountyFeature[] | null = null;

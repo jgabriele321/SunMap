@@ -1,48 +1,30 @@
 /**
- * SunMap - US Sunset Time Visualization
+ * SunMap - US Sunset Time Visualization (County Level)
  * 
  * ## How Computation Works
  * 
- * This app displays an interactive map of the United States, coloring each state
- * based on how its sunset time compares to the national average for a given day.
+ * This app displays an interactive map of the contiguous United States,
+ * coloring each county based on how its sunset time compares to the
+ * national average for a given day.
  * 
  * ### Core Algorithm
  * 
- * 1. **State Centroids**: For each US state, we compute a geographic centroid
- *    (longitude, latitude) using d3-geo's geoCentroid function on unprojected
- *    GeoJSON data from us-atlas (states-10m.json). This gives us real geographic
- *    coordinates, not projected map coordinates.
+ * 1. **Geographic Centroids**: For each county, compute a geographic
+ *    centroid using d3-geo on unprojected GeoJSON data from us-atlas.
  * 
- * 2. **Timezone Lookup**: Using the centroid coordinates, we look up the IANA
+ * 2. **Timezone Lookup**: Using the centroid coordinates, look up the IANA
  *    timezone identifier (e.g., "America/New_York") using tz-lookup.
  * 
- * 3. **Sunset Calculation**: For the selected date, we use SunCalc to compute
- *    the exact UTC instant of sunset at each state's centroid. To avoid
- *    off-by-one date issues, we pass UTC noon of the target date to SunCalc.
+ * 3. **Sunset Calculation**: Use SunCalc to compute the exact UTC instant of
+ *    sunset at each centroid. Pass UTC noon to avoid off-by-one date issues.
  * 
- * 4. **Local Time Conversion**: The sunset instant (UTC) is converted to the
- *    state's local timezone using Luxon. We extract the local clock time as
- *    "minutes after midnight" (hour * 60 + minute).
+ * 4. **Local Time Conversion**: Convert sunset instant to local timezone using
+ *    Luxon and extract "minutes after midnight".
  * 
- * 5. **National Average**: We compute the simple arithmetic mean of all states'
- *    local sunset minutes. This represents an "average clock time" - what time
- *    the sun sets across America if you average the local times.
+ * 5. **Average & Delta**: Compute national average and each county's delta.
  * 
- * 6. **Delta Calculation**: Each state's deviation from the average is computed.
- *    Positive delta = later sunset, negative delta = earlier sunset.
- * 
- * 7. **Color Mapping**: Deltas are normalized by the maximum absolute delta and
- *    mapped to a color scale:
- *    - Blue tones: earlier than average
- *    - Neutral/cream: near average
- *    - Orange/red tones: later than average
- * 
- * ### Important Notes
- * 
- * - All computation is done locally; no external API calls for sun times.
- * - The map uses Albers USA projection for DISPLAY only (handles Alaska/Hawaii).
- * - Results are cached in memory by date to avoid recomputation.
- * - Slider changes are debounced to prevent excessive recalculation.
+ * 6. **Color Mapping**: Map deltas to a blue (early) → neutral → red (late)
+ *    color scale.
  * 
  * @author SunMap
  * @license MIT
@@ -52,7 +34,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Controls } from './components/Controls';
 import { UsMap } from './components/UsMap';
 import { Legend } from './components/Legend';
-import { getStateFeatures } from './lib/map';
+import { getCountyFeatures } from './lib/map';
 import { dayOfYearToISO, daysInYear, formatDateReadable } from './lib/date';
 import { computeStateSunsets, type SunsetData } from './lib/sun';
 import './App.css';
@@ -65,7 +47,7 @@ const DEBOUNCE_MS = 100;
 
 function App() {
   // Day of year (1-365)
-  const [dayOfYear, setDayOfYear] = useState<number>(172); // Default to ~summer solstice
+  const [dayOfYear, setDayOfYear] = useState<number>(172); // ~summer solstice
   const [debouncedDay, setDebouncedDay] = useState<number>(dayOfYear);
   const [isComputing, setIsComputing] = useState(false);
 
@@ -75,8 +57,8 @@ function App() {
   // Get max days in year
   const maxDays = useMemo(() => daysInYear(YEAR), []);
 
-  // Load state features once
-  const stateFeatures = useMemo(() => getStateFeatures(), []);
+  // Load county features once
+  const countyFeatures = useMemo(() => getCountyFeatures(), []);
 
   // Debounce day changes
   const handleDayChange = useCallback((day: number) => {
@@ -104,7 +86,7 @@ function App() {
   const dateISO = useMemo(() => dayOfYearToISO(YEAR, debouncedDay), [debouncedDay]);
   const dateReadable = useMemo(() => formatDateReadable(dateISO), [dateISO]);
 
-  // Compute sunset data (memoized and cached internally)
+  // Compute sunset data
   const [sunsetData, setSunsetData] = useState<SunsetData | null>(null);
 
   useEffect(() => {
@@ -113,17 +95,19 @@ function App() {
     // Use requestAnimationFrame to let the UI update before computing
     const rafId = requestAnimationFrame(() => {
       const startTime = performance.now();
-      const data = computeStateSunsets(dateISO, stateFeatures);
+      const data = computeStateSunsets(dateISO, countyFeatures);
       const endTime = performance.now();
       
-      console.log(`Sunset computation took ${(endTime - startTime).toFixed(1)}ms for ${dateISO}`);
+      console.log(
+        `Sunset computation for ${countyFeatures.length} counties took ${(endTime - startTime).toFixed(1)}ms`
+      );
       
       setSunsetData(data);
       setIsComputing(false);
     });
 
     return () => cancelAnimationFrame(rafId);
-  }, [dateISO, stateFeatures]);
+  }, [dateISO, countyFeatures]);
 
   return (
     <div className="app">
@@ -139,18 +123,19 @@ function App() {
           dateISO={dateISO}
           dateReadable={dateReadable}
           avgMinutes={sunsetData?.avgMinutes ?? null}
+          countyCount={countyFeatures.length}
           onDayChange={handleDayChange}
         />
 
         {isComputing && (
           <div className="computing-indicator">
-            Computing sunset times...
+            Computing sunset times for {countyFeatures.length} counties...
           </div>
         )}
 
         <div className="map-legend-container">
           <UsMap
-            stateFeatures={stateFeatures}
+            features={countyFeatures}
             sunsetData={sunsetData}
           />
           
@@ -168,7 +153,7 @@ function App() {
           </a>
           . No external API calls.
         </p>
-        <p className="footer-year">Year: {YEAR}</p>
+        <p className="footer-year">Year: {YEAR} · Contiguous US only</p>
       </footer>
     </div>
   );

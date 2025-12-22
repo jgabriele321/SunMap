@@ -9,6 +9,12 @@ declare module 'us-atlas/states-10m.json' {
   export default topology;
 }
 
+declare module 'us-atlas/counties-10m.json' {
+  import type { Topology } from 'topojson-specification';
+  const topology: Topology;
+  export default topology;
+}
+
 // tz-lookup for timezone lookups from coordinates
 declare module 'tz-lookup' {
   /**

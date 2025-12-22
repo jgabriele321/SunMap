@@ -10,7 +10,7 @@
 
 import SunCalc from 'suncalc';
 import { DateTime } from 'luxon';
-import type { StateFeature } from './map';
+import type { CountyFeature } from './map';
 
 export interface StateResult {
   minutes: number | null;      // Minutes after midnight in local time
@@ -29,20 +29,23 @@ export interface SunsetData {
 const cache: Record<string, SunsetData> = {};
 
 /**
- * Compute sunset data for all states on a given date
+ * Compute sunset data for all counties on a given date
  * Results are cached by dateISO
  * 
  * @param dateISO - ISO date string (YYYY-MM-DD)
- * @param stateFeatures - Array of state features with centroids and timezones
- * @returns SunsetData with average, max delta, and per-state results
+ * @param features - Array of county features with centroids and timezones
+ * @returns SunsetData with average, max delta, and per-county results
  */
 export function computeStateSunsets(
   dateISO: string,
-  stateFeatures: StateFeature[]
+  features: CountyFeature[]
 ): SunsetData {
+  // Cache key includes feature count to differentiate state vs county
+  const cacheKey = `${dateISO}_${features.length}`;
+  
   // Return cached result if available
-  if (cache[dateISO]) {
-    return cache[dateISO];
+  if (cache[cacheKey]) {
+    return cache[cacheKey];
   }
 
   // Create a Date object at UTC noon to avoid off-by-one issues across timezones
@@ -54,8 +57,8 @@ export function computeStateSunsets(
   const perState: Record<string, StateResult> = {};
   const validMinutes: number[] = [];
 
-  for (const state of stateFeatures) {
-    const { id, centroidLonLat, tzid } = state;
+  for (const feat of features) {
+    const { id, centroidLonLat, tzid } = feat;
     
     if (!centroidLonLat || !tzid) {
       perState[id] = {
@@ -151,7 +154,7 @@ export function computeStateSunsets(
   };
 
   // Cache the result
-  cache[dateISO] = result;
+  cache[cacheKey] = result;
 
   return result;
 }

@@ -11,6 +11,7 @@ interface ControlsProps {
   dateISO: string;
   dateReadable: string;
   avgMinutes: number | null;
+  countyCount: number;
   onDayChange: (day: number) => void;
 }
 
@@ -20,6 +21,7 @@ export function Controls({
   dateISO,
   dateReadable,
   avgMinutes,
+  countyCount,
   onDayChange,
 }: ControlsProps) {
   const handleSliderChange = useCallback(
@@ -40,8 +42,6 @@ export function Controls({
   );
 
   // Format average sunset time
-  // We display this as a "clock average" without timezone label
-  // since it's an average of local clock times across different zones
   const avgSunsetDisplay =
     avgMinutes !== null ? formatMinutesToHHMM(avgMinutes) : '--:--';
 
@@ -84,12 +84,12 @@ export function Controls({
       </div>
 
       <p className="controls-explanation">
-        Colors show how each state's sunset compares to the U.S. average clock time for this day.
+        Colors show how each county's sunset compares to the U.S. average clock time for this day.
         <br />
         <span className="color-hint warm">Warm colors = later sunset</span> · 
         <span className="color-hint cool">Cool colors = earlier sunset</span>
+        <span className="county-note"> · {countyCount.toLocaleString()} counties</span>
       </p>
     </div>
   );
 }
-

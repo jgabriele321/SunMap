@@ -1,19 +1,18 @@
 /**
- * UsMap component - Renders the interactive US map with state colors
+ * UsMap component - Renders the interactive US county map with colors
  * 
- * Uses d3.geoAlbersUsa() projection for display, which properly handles
- * Alaska and Hawaii by repositioning them. The actual centroid calculations
+ * Uses d3.geoAlbersUsa() projection for display. The actual centroid calculations
  * are done on unprojected lon/lat coordinates in the map.ts module.
  */
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, memo } from 'react';
 import { geoPath, geoAlbersUsa } from 'd3-geo';
-import type { StateFeature } from '../lib/map';
+import type { CountyFeature } from '../lib/map';
 import type { StateResult } from '../lib/sun';
 import { colorForDelta } from '../lib/colors';
 
 interface UsMapProps {
-  stateFeatures: StateFeature[];
+  features: CountyFeature[];
   sunsetData: {
     maxAbsDelta: number;
     perState: Record<string, StateResult>;
@@ -22,6 +21,7 @@ interface UsMapProps {
 
 interface TooltipData {
   name: string;
+  stateName: string;
   sunsetHHMM: string | null;
   delta: number | null;
   tzid: string | null;
@@ -33,7 +33,38 @@ interface TooltipData {
 const WIDTH = 960;
 const HEIGHT = 600;
 
-export function UsMap({ stateFeatures, sunsetData }: UsMapProps) {
+// Memoized path component to prevent re-renders
+const MapPath = memo(function MapPath({
+  path,
+  color,
+  onMouseEnter,
+  onMouseMove,
+  onMouseLeave,
+  onClick,
+}: {
+  path: string;
+  color: string;
+  onMouseEnter: (e: React.MouseEvent) => void;
+  onMouseMove: (e: React.MouseEvent) => void;
+  onMouseLeave: () => void;
+  onClick: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <path
+      d={path}
+      fill={color}
+      stroke="#333"
+      strokeWidth={0.15}
+      className="map-path"
+      onMouseEnter={onMouseEnter}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+      onClick={onClick}
+    />
+  );
+});
+
+export function UsMap({ features, sunsetData }: UsMapProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const [pinnedTooltip, setPinnedTooltip] = useState<TooltipData | null>(null);
 
@@ -49,35 +80,36 @@ export function UsMap({ stateFeatures, sunsetData }: UsMapProps) {
     return geoPath(projection);
   }, [projection]);
 
-  // Compute paths and colors for each state
-  const statesWithPaths = useMemo(() => {
-    return stateFeatures.map((state) => {
-      const path = pathGenerator(state.feature);
-      const stateResult = sunsetData?.perState[state.id] || null;
+  // Compute paths and colors for each feature (memoized)
+  const featuresWithPaths = useMemo(() => {
+    return features.map((feat) => {
+      const path = pathGenerator(feat.feature);
+      const result = sunsetData?.perState[feat.id] || null;
       const color = colorForDelta(
-        stateResult?.delta ?? null,
+        result?.delta ?? null,
         sunsetData?.maxAbsDelta ?? 0
       );
 
       return {
-        ...state,
+        ...feat,
         path,
         color,
-        stateResult,
+        result,
       };
     });
-  }, [stateFeatures, sunsetData, pathGenerator]);
+  }, [features, sunsetData, pathGenerator]);
 
   // Handle mouse events
   const handleMouseEnter = useCallback(
-    (state: (typeof statesWithPaths)[0], e: React.MouseEvent) => {
-      if (pinnedTooltip) return; // Don't show hover tooltip if one is pinned
+    (feat: (typeof featuresWithPaths)[0], e: React.MouseEvent) => {
+      if (pinnedTooltip) return;
 
       setTooltip({
-        name: state.name,
-        sunsetHHMM: state.stateResult?.sunsetHHMM ?? null,
-        delta: state.stateResult?.delta ?? null,
-        tzid: state.stateResult?.tzid ?? null,
+        name: feat.name,
+        stateName: feat.stateName,
+        sunsetHHMM: feat.result?.sunsetHHMM ?? null,
+        delta: feat.result?.delta ?? null,
+        tzid: feat.result?.tzid ?? null,
         x: e.clientX,
         y: e.clientY,
       });
@@ -103,20 +135,17 @@ export function UsMap({ stateFeatures, sunsetData }: UsMapProps) {
   }, [pinnedTooltip]);
 
   const handleClick = useCallback(
-    (state: (typeof statesWithPaths)[0], e: React.MouseEvent) => {
-      // Toggle pinned tooltip
-      if (
-        pinnedTooltip &&
-        pinnedTooltip.name === state.name
-      ) {
+    (feat: (typeof featuresWithPaths)[0], e: React.MouseEvent) => {
+      if (pinnedTooltip && pinnedTooltip.name === feat.name) {
         setPinnedTooltip(null);
         setTooltip(null);
       } else {
         setPinnedTooltip({
-          name: state.name,
-          sunsetHHMM: state.stateResult?.sunsetHHMM ?? null,
-          delta: state.stateResult?.delta ?? null,
-          tzid: state.stateResult?.tzid ?? null,
+          name: feat.name,
+          stateName: feat.stateName,
+          sunsetHHMM: feat.result?.sunsetHHMM ?? null,
+          delta: feat.result?.delta ?? null,
+          tzid: feat.result?.tzid ?? null,
           x: e.clientX,
           y: e.clientY,
         });
@@ -152,22 +181,19 @@ export function UsMap({ stateFeatures, sunsetData }: UsMapProps) {
         className="us-map"
         onClick={handleSvgClick}
       >
-        <g className="states">
-          {statesWithPaths.map((state) => (
-            state.path && (
-              <path
-                key={state.id}
-                d={state.path}
-                fill={state.color}
-                stroke="#333"
-                strokeWidth={0.5}
-                className="state-path"
-                onMouseEnter={(e) => handleMouseEnter(state, e)}
+        <g className="features">
+          {featuresWithPaths.map((feat) => (
+            feat.path && (
+              <MapPath
+                key={feat.id}
+                path={feat.path}
+                color={feat.color}
+                onMouseEnter={(e) => handleMouseEnter(feat, e)}
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleClick(state, e);
+                  handleClick(feat, e);
                 }}
               />
             )
@@ -183,7 +209,9 @@ export function UsMap({ stateFeatures, sunsetData }: UsMapProps) {
             top: activeTooltip.y + 10,
           }}
         >
-          <div className="tooltip-name">{activeTooltip.name}</div>
+          <div className="tooltip-name">
+            {activeTooltip.name}, {activeTooltip.stateName}
+          </div>
           <div className="tooltip-row">
             <span className="tooltip-label">Sunset:</span>
             <span className="tooltip-value">
@@ -218,4 +246,3 @@ export function UsMap({ stateFeatures, sunsetData }: UsMapProps) {
     </div>
   );
 }
-

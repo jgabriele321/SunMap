@@ -272,6 +272,11 @@ body {
   margin-top: 2px;
 }
 
+.county-note {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
 .controls-explanation {
   margin-top: var(--spacing-md);
   padding-top: var(--spacing-md);
@@ -337,15 +342,15 @@ body {
   display: block;
 }
 
-.state-path {
+.map-path {
   cursor: pointer;
   transition: filter var(--transition-fast), stroke-width var(--transition-fast);
 }
 
-.state-path:hover {
-  filter: brightness(1.15);
-  stroke-width: 1.5;
+.map-path:hover {
+  filter: brightness(1.2);
   stroke: #fff;
+  stroke-width: 1px;
 }
 
 /* ============================================

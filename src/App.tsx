@@ -120,7 +120,6 @@ function App() {
         <Controls
           dayOfYear={dayOfYear}
           maxDays={maxDays}
-          dateISO={dateISO}
           dateReadable={dateReadable}
           avgMinutes={sunsetData?.avgMinutes ?? null}
           countyCount={countyFeatures.length}

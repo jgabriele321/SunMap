@@ -8,7 +8,6 @@ import { formatMinutesToHHMM } from '../lib/sun';
 interface ControlsProps {
   dayOfYear: number;
   maxDays: number;
-  dateISO: string;
   dateReadable: string;
   avgMinutes: number | null;
   countyCount: number;
@@ -18,7 +17,6 @@ interface ControlsProps {
 export function Controls({
   dayOfYear,
   maxDays,
-  dateISO,
   dateReadable,
   avgMinutes,
   countyCount,

@@ -45,38 +45,39 @@ export function Controls({
 
   return (
     <div className="controls">
-      <div className="controls-row">
-        <div className="control-group">
-          <label htmlFor="day-slider">Day of Year</label>
-          <div className="slider-container">
-            <input
-              id="day-slider"
-              type="range"
-              min={1}
-              max={maxDays}
-              value={dayOfYear}
-              onChange={handleSliderChange}
-              className="day-slider"
-            />
-            <input
-              type="number"
-              min={1}
-              max={maxDays}
-              value={dayOfYear}
-              onChange={handleInputChange}
-              className="day-input"
-            />
-          </div>
+      {/* Full-width slider row */}
+      <div className="slider-row">
+        <label htmlFor="day-slider">Day of Year</label>
+        <div className="slider-container">
+          <input
+            id="day-slider"
+            type="range"
+            min={1}
+            max={maxDays}
+            value={dayOfYear}
+            onChange={handleSliderChange}
+            className="day-slider"
+          />
+          <input
+            type="number"
+            min={1}
+            max={maxDays}
+            value={dayOfYear}
+            onChange={handleInputChange}
+            className="day-input"
+          />
+        </div>
+      </div>
+
+      {/* Date and sunset info row */}
+      <div className="info-row">
+        <div className="date-display">
+          <span className="date-value">{dateReadable}</span>
         </div>
 
-        <div className="control-group date-display">
-          <span className="date-iso">{dateReadable}</span>
-        </div>
-
-        <div className="control-group avg-display">
+        <div className="avg-display">
           <span className="avg-label">US Avg Sunset</span>
           <span className="avg-time">{avgSunsetDisplay}</span>
-          <span className="avg-note">(clock time avg)</span>
         </div>
       </div>
 

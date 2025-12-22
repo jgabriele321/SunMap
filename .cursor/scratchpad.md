@@ -64,6 +64,52 @@ Write down how to fix common issues so you (or someone else) can recover remotel
 
 ---
 
+## 🔍 Investigation: Time Offset ±106 Minutes Issue (Dec 19 2026)
+
+### Background
+User noticed that on December 19, 2026, the legend shows a range of -106 to +106 minutes which feels too wide. They suspected Alaska and Hawaii might be excluded from display but not from the average calculations.
+
+### Key Finding: US Territories NOT Being Excluded
+
+**Root Cause:** The exclusion list in `src/lib/map.ts` only excludes:
+- `02` (Alaska)
+- `15` (Hawaii)
+- `72` (Puerto Rico)
+
+But the us-atlas dataset includes OTHER US territories that are NOT being excluded:
+- **`60` (American Samoa)** - Has a county "Manu'a" with timezone `Pacific/Pago_Pago`, sunset at 18:45 (+106 min delta!)
+- **`66` (Guam)** - Timezone `Pacific/Guam`, sunset at 17:59 (+60 min delta)
+- **`69` (Northern Mariana Islands)** - Timezone `Pacific/Saipan` (+56 min delta)
+- **`78` (US Virgin Islands)** - Using `America/St_Thomas` timezone
+
+### Evidence from Investigation Script
+```
+=== Top 10 LATEST sunsets (most positive delta) ===
+  Manu'a, State 60: 18:45 (+106 min) [Pacific/Pago_Pago]   <-- AMERICAN SAMOA!
+  Presidio, Texas: 18:01 (+62 min) [America/Chicago]
+  Guam, State 66: 17:59 (+60 min) [Pacific/Guam]           <-- GUAM!
+  ...
+```
+
+**Without territories:** The contiguous US range would be approximately -70 to +62 minutes (more reasonable).
+
+### Proposed Fix
+Update `EXCLUDED_STATE_FIPS` in `src/lib/map.ts` to include all non-contiguous territories:
+
+```typescript
+const EXCLUDED_STATE_FIPS = new Set([
+  '02', // Alaska
+  '15', // Hawaii  
+  '60', // American Samoa
+  '66', // Guam
+  '69', // Northern Mariana Islands
+  '72', // Puerto Rico
+  '78', // US Virgin Islands
+]);
+```
+
+---
+
 ## Project Status Board
 
 ### Completed

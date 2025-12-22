@@ -72,8 +72,7 @@ export function Controls({
         </div>
 
         <div className="control-group date-display">
-          <span className="date-iso">{dateISO}</span>
-          <span className="date-readable">{dateReadable}</span>
+          <span className="date-iso">{dateReadable}</span>
         </div>
 
         <div className="control-group avg-display">

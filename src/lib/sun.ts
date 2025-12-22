@@ -165,9 +165,11 @@ export function computeStateSunsets(
  * @returns Formatted time string
  */
 export function formatMinutesToHHMM(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
+  const hours24 = Math.floor(minutes / 60);
   const mins = Math.round(minutes % 60);
-  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  const period = hours24 >= 12 ? 'pm' : 'am';
+  const hours12 = hours24 % 12 || 12; // Convert 0 to 12 for midnight
+  return `${hours12}:${mins.toString().padStart(2, '0')}${period}`;
 }
 
 /**

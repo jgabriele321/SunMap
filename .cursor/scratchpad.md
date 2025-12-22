@@ -1,107 +1,93 @@
-# SunMap Granularity Enhancement Plan
+# SunMap & YouUp Server Management
 
 ## Background and Motivation
 
-The current SunMap displays sunset time variations at the **state level** (50 states + DC). The user wants a **more granular** visualization that shows finer geographic detail while:
-1. Maintaining the visual fidelity of the US map shape
-2. Avoiding gaps in the visualization
-3. Keeping reasonable performance
+### Completed Deployments
+- ✅ **SunMap** (sunmap.dwings.app) - Interactive US sunset map
+- ✅ **YouUp** (youup.dwings.app) - Server status dashboard
 
-## Key Challenges and Analysis
+### Architecture
+```
+Internet → Cloudflare Tunnel → Ubuntu Server
+                                ├── Caddy :8080 → /var/www/sunmap/dist (static)
+                                └── Caddy :8081 → localhost:3001 (Node.js YouUp)
+```
 
-### Option 1: County-Level Map
-**Pros:**
-- ~3,200 counties provides much finer detail
-- Counties follow actual administrative boundaries (no gaps)
-- us-atlas provides `counties-10m.json` (unprojected, same as states)
+---
 
-**Cons:**
-- 60x more polygons to render and compute
-- Need county-level FIPS to timezone mapping
-- SVG performance with 3000+ paths may be slow on mobile
+## 🚨 Pre-Trip Server Hardening Plan
 
-### Option 2: Grid-Based Overlay
-**Pros:**
-- Arbitrary granularity (e.g., 0.5° lat/lon grid = ~2500 cells)
-- Simple to implement - just sample points
-- Easy to adjust density
+**Goal:** Ensure server stays healthy for 1 month unattended
 
-**Cons:**
-- Grid cells don't follow state/coastline boundaries (gaps or overflows)
-- Need to clip grid to US boundary
-- Less "natural" looking
+### Task 1: External Uptime Monitoring (FREE)
+Set up UptimeRobot or Cronitor to ping your sites every 5 minutes and email/SMS you if they go down.
+- [ ] Sign up at uptimerobot.com (free tier: 50 monitors)
+- [ ] Add monitor for https://sunmap.dwings.app
+- [ ] Add monitor for https://youup.dwings.app
+- [ ] Configure email/SMS alerts
+- **Success criteria:** Receive test alert, then receive "up" confirmation
+- **Time estimate:** 10 minutes
 
-### Option 3: Voronoi/Hexbin Approach
-**Pros:**
-- Interesting visual style
-- Can control point density
+### Task 2: Enable Automatic Security Updates
+Ubuntu can auto-install security patches so you don't get hacked while away.
+- [ ] Install unattended-upgrades: `sudo apt install unattended-upgrades`
+- [ ] Enable it: `sudo dpkg-reconfigure -plow unattended-upgrades`
+- [ ] Verify: `cat /etc/apt/apt.conf.d/20auto-upgrades`
+- **Success criteria:** File shows `APT::Periodic::Unattended-Upgrade "1";`
+- **Time estimate:** 5 minutes
 
-**Cons:**
-- More complex implementation
-- May look unfamiliar to users
+### Task 3: Verify Service Auto-Restart Policies
+Confirm all services will restart if they crash or if the server reboots.
+- [ ] Check youup service: `systemctl show youup | grep Restart`
+- [ ] Check caddy service: `systemctl show caddy | grep Restart`
+- [ ] Check cloudflared service: `systemctl show cloudflared | grep Restart`
+- [ ] Test with reboot: `sudo reboot` then verify all services come back
+- **Success criteria:** All services show `Restart=always` or `on-failure`, and survive reboot
+- **Time estimate:** 10 minutes
 
-### Recommended Approach: County-Level Map
+### Task 4: Set Up Disk Space Alert
+Prevent disk from filling up and crashing services.
+- [ ] Check current usage: `df -h /`
+- [ ] Add cron job to email if disk > 80%
+- [ ] Or: set up logrotate for any growing logs
+- **Success criteria:** Alert mechanism in place
+- **Time estimate:** 15 minutes
 
-Counties are the natural next step - they're real geographic units, us-atlas already provides the data, and the centroid/timezone approach works identically. Key implementation:
+### Task 5: Document Recovery Procedures
+Write down how to fix common issues so you (or someone else) can recover remotely.
+- [ ] SSH command to access server
+- [ ] Commands to restart services
+- [ ] Commands to check logs
+- [ ] Emergency contacts / escalation plan
+- **Success criteria:** README with all recovery commands
+- **Time estimate:** 15 minutes
 
-1. Use `us-atlas/counties-10m.json` (unprojected TopoJSON)
-2. Compute centroid for each county → lookup timezone
-3. Compute sunset for each county
-4. Color by delta from national average
-5. Optimize rendering:
-   - Use `<canvas>` instead of SVG paths for better performance
-   - Or use SVG with optimized path rendering (memo paths, reduce re-renders)
-   - Consider web workers for computation
-
-## High-level Task Breakdown
-
-### Task 1: Add County Data Loading
-- [ ] Import `us-atlas/counties-10m.json`
-- [ ] Create county-to-name mapping (FIPS codes)
-- [ ] Compute centroids and timezones for each county
-- **Success criteria:** Console logs showing ~3200 counties with valid centroids/timezones
-
-### Task 2: Create Toggle for State vs County View
-- [ ] Add UI toggle: "State" | "County" mode
-- [ ] State-level view remains default
-- [ ] County view uses county features instead
-- **Success criteria:** Toggle switches between state and county map data
-
-### Task 3: Optimize Rendering for 3000+ Polygons
-- [ ] Memoize path generation to avoid recomputation
-- [ ] Consider using `<canvas>` renderer for county view
-- [ ] Test performance on county view
-- **Success criteria:** Smooth slider interaction with county view (no lag)
-
-### Task 4: Update Tooltip for Counties
-- [ ] Show county name + state name
-- [ ] Same sunset info (time, delta, timezone)
-- **Success criteria:** Hovering counties shows proper county/state names
-
-### Task 5: Polish and Test
-- [ ] Test edge dates (day 1, 365)
-- [ ] Test Alaska/Hawaii counties
-- [ ] Verify no gaps in visualization
-- **Success criteria:** Complete county map with all acceptance criteria met
+---
 
 ## Project Status Board
 
-- [x] Initial app implementation
-- [x] Bug fix: polar day handling for Alaska
-- [x] Push to GitHub
-- [ ] Task 1: Add County Data Loading
-- [ ] Task 2: Create Toggle for State vs County View
-- [ ] Task 3: Optimize Rendering
-- [ ] Task 4: Update Tooltip for Counties
-- [ ] Task 5: Polish and Test
+### Completed
+- [x] SunMap app implementation (county-level)
+- [x] Deploy SunMap to sunmap.dwings.app
+- [x] YouUp server dashboard implementation
+- [x] Deploy YouUp to youup.dwings.app
+- [x] Fix port conflict (YouUp on 3001, Caddy proxies 8081→3001)
 
-## Executor's Feedback or Assistance Requests
+### Pre-Trip Hardening
+- [ ] Task 1: External uptime monitoring
+- [ ] Task 2: Automatic security updates
+- [ ] Task 3: Verify service restart policies
+- [ ] Task 4: Disk space monitoring
+- [ ] Task 5: Document recovery procedures
 
-*Ready to begin Task 1 upon approval.*
+---
 
 ## Lessons
 
-1. **Polar day edge case**: Alaska in summer may have sunset on a different calendar day (or no sunset). Must validate that sunset date matches requested date before computing minutes-after-midnight.
-
-2. **us-atlas unprojected vs projected**: Use `states-10m.json` or `counties-10m.json` (unprojected) for centroid calculation, NOT the `-albers` versions which are pre-projected.
-
+1. Cloudflare Tunnel eliminates need for port forwarding and static IP
+2. Caddy is simpler than nginx for serving static files
+3. Always set up services to persist across reboots
+4. Systemd `Environment=` variables override code defaults
+5. When using reverse_proxy in Caddy, the backend app must run on a DIFFERENT port than Caddy listens on
+6. SSH keys are required for cloning private GitHub repos on servers
+7. Always verify service status with `systemctl status` after changes

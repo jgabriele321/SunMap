@@ -40,7 +40,7 @@ import { computeStateSunsets, type SunsetData } from './lib/sun';
 import './App.css';
 
 // Fixed year for the app
-const YEAR = 2025;
+const YEAR = 2026;
 
 // Debounce delay in milliseconds
 const DEBOUNCE_MS = 100;

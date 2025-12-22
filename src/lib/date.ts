@@ -29,10 +29,10 @@ export function daysInYear(year: number): number {
 /**
  * Format a date ISO string to a more readable format
  * @param dateISO - ISO date string
- * @returns Formatted date like "June 21, 2025"
+ * @returns Formatted date like "December 12 2026"
  */
 export function formatDateReadable(dateISO: string): string {
   const dt = DateTime.fromISO(dateISO, { zone: 'utc' });
-  return dt.toFormat('LLLL d, yyyy');
+  return dt.toFormat('LLLL d yyyy');
 }
 

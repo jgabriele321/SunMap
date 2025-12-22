@@ -1,0 +1,95 @@
+/**
+ * Controls component - Day of year slider and date display
+ */
+
+import { useCallback } from 'react';
+import { formatMinutesToHHMM } from '../lib/sun';
+
+interface ControlsProps {
+  dayOfYear: number;
+  maxDays: number;
+  dateISO: string;
+  dateReadable: string;
+  avgMinutes: number | null;
+  onDayChange: (day: number) => void;
+}
+
+export function Controls({
+  dayOfYear,
+  maxDays,
+  dateISO,
+  dateReadable,
+  avgMinutes,
+  onDayChange,
+}: ControlsProps) {
+  const handleSliderChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onDayChange(parseInt(e.target.value, 10));
+    },
+    [onDayChange]
+  );
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = parseInt(e.target.value, 10);
+      if (!isNaN(value) && value >= 1 && value <= maxDays) {
+        onDayChange(value);
+      }
+    },
+    [onDayChange, maxDays]
+  );
+
+  // Format average sunset time
+  // We display this as a "clock average" without timezone label
+  // since it's an average of local clock times across different zones
+  const avgSunsetDisplay =
+    avgMinutes !== null ? formatMinutesToHHMM(avgMinutes) : '--:--';
+
+  return (
+    <div className="controls">
+      <div className="controls-row">
+        <div className="control-group">
+          <label htmlFor="day-slider">Day of Year</label>
+          <div className="slider-container">
+            <input
+              id="day-slider"
+              type="range"
+              min={1}
+              max={maxDays}
+              value={dayOfYear}
+              onChange={handleSliderChange}
+              className="day-slider"
+            />
+            <input
+              type="number"
+              min={1}
+              max={maxDays}
+              value={dayOfYear}
+              onChange={handleInputChange}
+              className="day-input"
+            />
+          </div>
+        </div>
+
+        <div className="control-group date-display">
+          <span className="date-iso">{dateISO}</span>
+          <span className="date-readable">{dateReadable}</span>
+        </div>
+
+        <div className="control-group avg-display">
+          <span className="avg-label">US Avg Sunset</span>
+          <span className="avg-time">{avgSunsetDisplay}</span>
+          <span className="avg-note">(clock time avg)</span>
+        </div>
+      </div>
+
+      <p className="controls-explanation">
+        Colors show how each state's sunset compares to the U.S. average clock time for this day.
+        <br />
+        <span className="color-hint warm">Warm colors = later sunset</span> · 
+        <span className="color-hint cool">Cool colors = earlier sunset</span>
+      </p>
+    </div>
+  );
+}
+

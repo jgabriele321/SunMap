@@ -332,8 +332,8 @@ body {
 
 .map-container {
   position: relative;
-  width: 100%;
-  max-width: 1920px;
+  width: 70%;
+  max-width: 1344px;
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
@@ -550,6 +550,10 @@ body {
 @media (max-width: 768px) {
   .app {
     padding: var(--spacing-md);
+  }
+
+  .map-container {
+    width: 100%;
   }
 
   .app-header h1 {

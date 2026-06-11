@@ -103,7 +103,8 @@ function App() {
           <a href="https://github.com/mourner/suncalc" target="_blank" rel="noopener noreferrer">
             SunCalc
           </a>{' '}
-          · no API calls · same every year
+          · no API calls · same every year ·{' '}
+          <a href="/USA">classic US county view</a>
         </p>
       </footer>
     </div>

@@ -2,8 +2,14 @@
  * Type declarations for packages without TypeScript definitions
  */
 
-// world-atlas provides TopoJSON files
+// world-atlas / us-atlas provide TopoJSON files
 declare module 'world-atlas/countries-110m.json' {
+  import type { Topology } from 'topojson-specification';
+  const topology: Topology;
+  export default topology;
+}
+
+declare module 'us-atlas/counties-10m.json' {
   import type { Topology } from 'topojson-specification';
   const topology: Topology;
   export default topology;

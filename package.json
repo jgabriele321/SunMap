@@ -17,7 +17,8 @@
     "suncalc": "^1.9.0",
     "topojson-client": "^3.1.0",
     "tz-lookup": "^6.1.25",
-    "us-atlas": "^3.0.1"
+    "us-atlas": "^3.0.1",
+    "world-atlas": "^2.0.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

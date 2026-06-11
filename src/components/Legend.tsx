@@ -1,55 +1,24 @@
 /**
- * Legend component - Shows the color scale for sunset time differences
+ * Legend component - Color scale for sunset time vs world average
  */
 
-import { getLegendColors } from '../lib/colors';
+import { legendGradient } from '../lib/colors';
 
 interface LegendProps {
   maxDeltaMinutes: number;
 }
 
 export function Legend({ maxDeltaMinutes }: LegendProps) {
-  const colors = getLegendColors();
-  
-  // Format delta for display
-  const formatDelta = (mins: number) => {
-    if (mins === 0) return '±0';
-    const sign = mins > 0 ? '+' : '';
-    return `${sign}${Math.round(mins)} min`;
+  const fmt = (mins: number) => {
+    const h = Math.abs(mins) >= 90 ? `${(Math.abs(mins) / 60).toFixed(1)}h` : `${Math.round(Math.abs(mins))}m`;
+    return `${mins < 0 ? '−' : '+'}${h}`;
   };
 
   return (
     <div className="legend">
-      <div className="legend-title">Sunset vs US Average</div>
-      
-      <div className="legend-scale">
-        {/* Earlier side (cool colors) */}
-        <div className="legend-end earlier">
-          <span className="legend-label">{formatDelta(-maxDeltaMinutes)}</span>
-          <span className="legend-desc">Earlier</span>
-        </div>
-
-        {/* Color gradient bar */}
-        <div 
-          className="legend-gradient"
-          style={{
-            background: `linear-gradient(to right, 
-              ${colors.deepCool} 0%, 
-              ${colors.nearCool} 30%, 
-              ${colors.neutral} 50%, 
-              ${colors.nearWarm} 70%, 
-              ${colors.deepWarm} 100%
-            )`
-          }}
-        />
-
-        {/* Later side (warm colors) */}
-        <div className="legend-end later">
-          <span className="legend-label">{formatDelta(maxDeltaMinutes)}</span>
-          <span className="legend-desc">Later</span>
-        </div>
-      </div>
+      <span className="legend-end earlier">{fmt(-maxDeltaMinutes)} earlier</span>
+      <div className="legend-gradient" style={{ background: legendGradient() }} />
+      <span className="legend-end later">{fmt(maxDeltaMinutes)} later</span>
     </div>
   );
 }
-

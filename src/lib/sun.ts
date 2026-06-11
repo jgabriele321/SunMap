@@ -1,183 +1,114 @@
 /**
- * Sunset computation utilities
- * 
- * This module computes local sunset times for each US state by:
- * 1. Using SunCalc to get the UTC instant of sunset at each state's centroid
- * 2. Converting that instant to the state's local timezone using Luxon
- * 3. Extracting the local clock time as "minutes after midnight"
- * 4. Computing the national average and each state's delta from average
+ * Sunset computation utilities (global dot-grid)
+ *
+ * For each land grid point:
+ * 1. SunCalc gives the UTC instant of sunset at that lon/lat
+ * 2. The point's IANA timezone offset (precomputed once per zone per date
+ *    via Luxon) converts it to local clock time
+ * 3. We keep "minutes after local midnight" and the delta vs the global mean
+ *
+ * Points with no sunset on the requested local date (polar day/night)
+ * are stored as NaN.
  */
 
 import SunCalc from 'suncalc';
 import { DateTime } from 'luxon';
-import type { CountyFeature } from './map';
-
-export interface StateResult {
-  minutes: number | null;      // Minutes after midnight in local time
-  delta: number | null;        // Difference from national average
-  tzid: string | null;         // IANA timezone identifier
-  sunsetHHMM: string | null;   // Formatted local sunset time
-}
+import type { LandGrid } from './world';
 
 export interface SunsetData {
   avgMinutes: number;
-  maxAbsDelta: number;
-  perState: Record<string, StateResult>;
+  /** Normalization scale for colors: 95th percentile of |delta| */
+  scaleMax: number;
+  /** Minutes after local midnight, NaN = no sunset that day */
+  minutes: Float32Array;
+  /** Delta vs global average, NaN = no sunset */
+  delta: Float32Array;
+  validCount: number;
 }
 
-// Simple in-memory cache for computed sunset data
+// In-memory cache keyed by ISO date
 const cache: Record<string, SunsetData> = {};
 
-/**
- * Compute sunset data for all counties on a given date
- * Results are cached by dateISO
- * 
- * @param dateISO - ISO date string (YYYY-MM-DD)
- * @param features - Array of county features with centroids and timezones
- * @returns SunsetData with average, max delta, and per-county results
- */
-export function computeStateSunsets(
-  dateISO: string,
-  features: CountyFeature[]
-): SunsetData {
-  // Cache key includes feature count to differentiate state vs county
-  const cacheKey = `${dateISO}_${features.length}`;
-  
-  // Return cached result if available
-  if (cache[cacheKey]) {
-    return cache[cacheKey];
-  }
+export function computeGridSunsets(dateISO: string, grid: LandGrid): SunsetData {
+  if (cache[dateISO]) return cache[dateISO];
 
-  // Create a Date object at UTC noon to avoid off-by-one issues across timezones
-  // This ensures we're computing sunset for the correct local date everywhere
+  // UTC noon avoids off-by-one date issues when SunCalc picks the solar day
   const dateAtUtcNoon = DateTime.fromISO(dateISO, { zone: 'utc' })
     .set({ hour: 12, minute: 0, second: 0, millisecond: 0 })
     .toJSDate();
 
-  const perState: Record<string, StateResult> = {};
-  const validMinutes: number[] = [];
+  const [y, m, d] = dateISO.split('-').map(Number);
 
-  for (const feat of features) {
-    const { id, centroidLonLat, tzid } = feat;
-    
-    if (!centroidLonLat || !tzid) {
-      perState[id] = {
-        minutes: null,
-        delta: null,
-        tzid: null,
-        sunsetHHMM: null,
-      };
+  // One Luxon call per timezone instead of per point. Offset is sampled at
+  // 18:00 local — close enough to sunset that DST edges (2-3am) never matter.
+  const tzOffset = grid.tz.map(
+    (tz) => DateTime.fromISO(dateISO, { zone: tz }).set({ hour: 18 }).offset
+  );
+
+  const minutes = new Float32Array(grid.n).fill(NaN);
+  const delta = new Float32Array(grid.n).fill(NaN);
+
+  let sum = 0;
+  let validCount = 0;
+
+  for (let i = 0; i < grid.n; i++) {
+    const times = SunCalc.getTimes(dateAtUtcNoon, grid.lat[i], grid.lon[i]);
+    const sunsetMs = times.sunset?.getTime();
+    if (sunsetMs === undefined || isNaN(sunsetMs)) continue;
+
+    const local = new Date(sunsetMs + tzOffset[grid.tzIdx[i]] * 60000);
+    // Polar edge case: sunset falls on a different local date (or never)
+    if (
+      local.getUTCFullYear() !== y ||
+      local.getUTCMonth() + 1 !== m ||
+      local.getUTCDate() !== d
+    ) {
       continue;
     }
 
-    const [lon, lat] = centroidLonLat;
-
-    try {
-      // Get sun times from SunCalc (returns UTC instants)
-      const times = SunCalc.getTimes(dateAtUtcNoon, lat, lon);
-      const sunsetInstant = times.sunset;
-
-      // Check if sunset is valid (not NaN or invalid date)
-      if (!sunsetInstant || isNaN(sunsetInstant.getTime())) {
-        perState[id] = {
-          minutes: null,
-          delta: null,
-          tzid,
-          sunsetHHMM: null,
-        };
-        continue;
-      }
-
-      // Convert sunset instant to local timezone
-      const dtLocal = DateTime.fromJSDate(sunsetInstant, { zone: 'utc' })
-        .setZone(tzid);
-
-      // CRITICAL: Check if sunset occurs on the expected date
-      // In polar regions (Alaska in summer), sunset may occur on a different day
-      // or not at all. We only want sunsets that occur on the requested date.
-      const expectedDate = DateTime.fromISO(dateISO, { zone: tzid });
-      if (dtLocal.day !== expectedDate.day || dtLocal.month !== expectedDate.month) {
-        // Sunset is on a different day - likely polar day/night edge case
-        perState[id] = {
-          minutes: null,
-          delta: null,
-          tzid,
-          sunsetHHMM: 'N/A (polar)',
-        };
-        continue;
-      }
-
-      // Calculate minutes after midnight in local time
-      const minutes = dtLocal.hour * 60 + dtLocal.minute;
-      
-      // Format as HH:MM
-      const sunsetHHMM = dtLocal.toFormat('HH:mm');
-
-      perState[id] = {
-        minutes,
-        delta: 0, // Will be computed after we have the average
-        tzid,
-        sunsetHHMM,
-      };
-
-      validMinutes.push(minutes);
-    } catch {
-      perState[id] = {
-        minutes: null,
-        delta: null,
-        tzid,
-        sunsetHHMM: null,
-      };
-    }
+    const mins =
+      local.getUTCHours() * 60 + local.getUTCMinutes() + local.getUTCSeconds() / 60;
+    minutes[i] = mins;
+    sum += mins;
+    validCount++;
   }
 
-  // Calculate national average (simple arithmetic mean of local clock times)
-  const avgMinutes = validMinutes.length > 0
-    ? validMinutes.reduce((sum, m) => sum + m, 0) / validMinutes.length
-    : 0;
+  const avgMinutes = validCount > 0 ? sum / validCount : 0;
 
-  // Compute deltas and find max absolute delta
-  let maxAbsDelta = 0;
-
-  for (const id of Object.keys(perState)) {
-    const state = perState[id];
-    if (state.minutes !== null) {
-      state.delta = state.minutes - avgMinutes;
-      maxAbsDelta = Math.max(maxAbsDelta, Math.abs(state.delta));
+  // Deltas + robust normalization (p95 so a few extreme zones don't wash
+  // out the rest of the map)
+  const absDeltas: number[] = [];
+  for (let i = 0; i < grid.n; i++) {
+    if (!isNaN(minutes[i])) {
+      delta[i] = minutes[i] - avgMinutes;
+      absDeltas.push(Math.abs(delta[i]));
     }
   }
+  absDeltas.sort((a, b) => a - b);
+  const p95 = absDeltas.length > 0 ? absDeltas[Math.floor(absDeltas.length * 0.95)] : 60;
+  const scaleMax = Math.max(40, Math.round(p95));
 
-  const result: SunsetData = {
-    avgMinutes,
-    maxAbsDelta,
-    perState,
-  };
-
-  // Cache the result
-  cache[cacheKey] = result;
-
+  const result: SunsetData = { avgMinutes, scaleMax, minutes, delta, validCount };
+  cache[dateISO] = result;
   return result;
 }
 
 /**
- * Format minutes after midnight to HH:MM string
- * @param minutes - Minutes after midnight
- * @returns Formatted time string
+ * Format minutes after midnight as 12-hour time, e.g. "8:34pm"
  */
 export function formatMinutesToHHMM(minutes: number): string {
   const hours24 = Math.floor(minutes / 60);
   const mins = Math.round(minutes % 60);
   const period = hours24 >= 12 ? 'pm' : 'am';
-  const hours12 = hours24 % 12 || 12; // Convert 0 to 12 for midnight
+  const hours12 = hours24 % 12 || 12;
   return `${hours12}:${mins.toString().padStart(2, '0')}${period}`;
 }
 
 /**
- * Clear the sunset cache (useful for testing)
+ * Format a delta in minutes, e.g. "+23 min" / "−41 min"
  */
-export function clearSunsetCache(): void {
-  for (const key of Object.keys(cache)) {
-    delete cache[key];
-  }
+export function formatDelta(delta: number): string {
+  if (isNaN(delta)) return 'N/A';
+  const rounded = Math.round(delta);
+  return `${rounded >= 0 ? '+' : '−'}${Math.abs(rounded)} min`;
 }
-

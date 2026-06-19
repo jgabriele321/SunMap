@@ -2,15 +2,22 @@ import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 
-// Path-based entry split: /USA serves the classic US county map, everything
-// else the global globe. Lazy chunks keep each app's CSS and data separate.
-// NOTE: the two import() calls must stay in separate lazy() callsites —
-// sharing one ternary expression makes Vite's preload helper attach the
-// wrong chunk's CSS.
-const isUsa = /^\/usa\/?$/i.test(window.location.pathname)
+// Path-based entry split: /USA serves the classic US county map, /temp the
+// temperature globe, everything else the sunset globe. Lazy chunks keep each
+// app's CSS and data separate.
+// NOTE: each route must be its own separate lazy() callsite — sharing one
+// ternary import() expression makes Vite's preload helper attach the wrong
+// chunk's CSS.
+const path = window.location.pathname
 const GlobeApp = lazy(() => import('./App'))
 const UsaApp = lazy(() => import('./usa/UsApp'))
-const App = isUsa ? UsaApp : GlobeApp
+const TempApp = lazy(() => import('./temp/TempApp'))
+
+const App = /^\/usa\/?$/i.test(path)
+  ? UsaApp
+  : /^\/temp\/?$/i.test(path)
+    ? TempApp
+    : GlobeApp
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

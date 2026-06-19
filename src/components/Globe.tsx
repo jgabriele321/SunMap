@@ -17,14 +17,28 @@ import { geoOrthographic, geoPath, geoGraticule10 } from 'd3-geo';
 import type { GeoProjection } from 'd3-geo';
 import type { LandGrid } from '../lib/world';
 import { getWorldShapes } from '../lib/world';
-import type { SunsetData } from '../lib/sun';
-import { formatMinutesToHHMM, formatDelta } from '../lib/sun';
+
+/** One row of the dot tooltip */
+export interface DotInfoRow {
+  label: string;
+  value: string;
+  /** Optional extra class on the value span (e.g. 'later' / 'earlier') */
+  className?: string;
+}
+
+/** Tooltip content for a single dot, supplied by the host app */
+export interface DotInfo {
+  title: string;
+  subtitle?: string;
+  rows: DotInfoRow[];
+}
 
 interface GlobeProps {
   grid: LandGrid;
-  sunset: SunsetData | null;
   /** Precomputed per-point fill colors (recomputed only when the day changes) */
   colors: string[] | null;
+  /** Build the tooltip content for a dot index (decouples Globe from the dataset) */
+  getDotInfo: (index: number) => DotInfo | null;
 }
 
 interface TooltipState {
@@ -42,7 +56,7 @@ const DEFAULT_ZOOM = 1;
 // Cursor must be within ~2.2° of a dot to count as hitting it
 const PICK_COS_THRESHOLD = Math.cos(2.2 * RAD);
 
-export function Globe({ grid, sunset, colors }: GlobeProps) {
+export function Globe({ grid, colors, getDotInfo }: GlobeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -407,19 +421,7 @@ export function Globe({ grid, sunset, colors }: GlobeProps) {
 
   /* ---------- tooltip content ---------- */
 
-  const tooltipContent = (() => {
-    if (!tooltip || !sunset) return null;
-    const i = tooltip.index;
-    const mins = sunset.minutes[i];
-    const dlt = sunset.delta[i];
-    return {
-      country: grid.countries[grid.countryIdx[i]],
-      coords: `${Math.abs(grid.lat[i]).toFixed(1)}°${grid.lat[i] >= 0 ? 'N' : 'S'}, ${Math.abs(grid.lon[i]).toFixed(1)}°${grid.lon[i] >= 0 ? 'E' : 'W'}`,
-      sunset: isNaN(mins) ? 'No sunset (polar)' : formatMinutesToHHMM(mins),
-      delta: isNaN(dlt) ? null : dlt,
-      tz: grid.tz[grid.tzIdx[i]],
-    };
-  })();
+  const tooltipContent = tooltip ? getDotInfo(tooltip.index) : null;
 
   return (
     <div className="globe-container" ref={containerRef}>
@@ -444,26 +446,16 @@ export function Globe({ grid, sunset, colors }: GlobeProps) {
             top: tooltip.y + 14,
           }}
         >
-          <div className="tooltip-name">{tooltipContent.country}</div>
-          <div className="tooltip-coords">{tooltipContent.coords}</div>
-          <div className="tooltip-row">
-            <span className="tooltip-label">Sunset</span>
-            <span className="tooltip-value">{tooltipContent.sunset}</span>
-          </div>
-          {tooltipContent.delta !== null && (
-            <div className="tooltip-row">
-              <span className="tooltip-label">vs world avg</span>
-              <span
-                className={`tooltip-value ${tooltipContent.delta > 0 ? 'later' : 'earlier'}`}
-              >
-                {formatDelta(tooltipContent.delta)}
-              </span>
-            </div>
+          <div className="tooltip-name">{tooltipContent.title}</div>
+          {tooltipContent.subtitle && (
+            <div className="tooltip-coords">{tooltipContent.subtitle}</div>
           )}
-          <div className="tooltip-row">
-            <span className="tooltip-label">Zone</span>
-            <span className="tooltip-value tooltip-tz">{tooltipContent.tz}</span>
-          </div>
+          {tooltipContent.rows.map((row) => (
+            <div className="tooltip-row" key={row.label}>
+              <span className="tooltip-label">{row.label}</span>
+              <span className={`tooltip-value ${row.className ?? ''}`}>{row.value}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -1,15 +1,18 @@
 /**
  * Controls component - Day of year slider with date display and presets
+ *
+ * The right-hand stat is supplied by the host app (e.g. "World avg sunset")
+ * so this component is shared across the sunset and temperature views.
  */
 
 import { useCallback } from 'react';
-import { formatMinutesToHHMM } from '../lib/sun';
 import { DAYS_IN_YEAR, todayDayOfYear } from '../lib/date';
 
 interface ControlsProps {
   dayOfYear: number;
   dateReadable: string;
-  avgMinutes: number | null;
+  /** Optional headline stat shown to the right of the date */
+  stat?: { label: string; value: string } | null;
   onDayChange: (day: number) => void;
 }
 
@@ -21,15 +24,13 @@ const PRESETS: { label: string; day: number }[] = [
   { label: 'Dec solstice', day: 355 },
 ];
 
-export function Controls({ dayOfYear, dateReadable, avgMinutes, onDayChange }: ControlsProps) {
+export function Controls({ dayOfYear, dateReadable, stat, onDayChange }: ControlsProps) {
   const handleSliderChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       onDayChange(parseInt(e.target.value, 10));
     },
     [onDayChange]
   );
-
-  const avgSunsetDisplay = avgMinutes !== null ? formatMinutesToHHMM(avgMinutes) : '—';
 
   return (
     <div className="controls">
@@ -38,10 +39,12 @@ export function Controls({ dayOfYear, dateReadable, avgMinutes, onDayChange }: C
           <span className="date-label">Date</span>
           <span className="date-value">{dateReadable}</span>
         </div>
-        <div className="avg-display">
-          <span className="avg-label">World avg sunset</span>
-          <span className="avg-time">{avgSunsetDisplay}</span>
-        </div>
+        {stat && (
+          <div className="avg-display">
+            <span className="avg-label">{stat.label}</span>
+            <span className="avg-time">{stat.value}</span>
+          </div>
+        )}
       </div>
 
       <input

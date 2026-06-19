@@ -18,8 +18,9 @@ import { Globe } from './components/Globe';
 import { Legend } from './components/Legend';
 import { getLandGrid } from './lib/world';
 import { dayOfYearToISO, formatDateReadable, todayDayOfYear } from './lib/date';
-import { computeGridSunsets, type SunsetData } from './lib/sun';
+import { computeGridSunsets, formatMinutesToHHMM, formatDelta, type SunsetData } from './lib/sun';
 import { colorForDelta } from './lib/colors';
+import type { DotInfo } from './components/Globe';
 import './App.css';
 
 const DEBOUNCE_MS = 80;
@@ -65,6 +66,34 @@ function App() {
     return out;
   }, [sunsetData, grid]);
 
+  const getDotInfo = useCallback(
+    (i: number): DotInfo | null => {
+      if (!sunsetData) return null;
+      const mins = sunsetData.minutes[i];
+      const dlt = sunsetData.delta[i];
+      const rows: DotInfo['rows'] = [
+        {
+          label: 'Sunset',
+          value: isNaN(mins) ? 'No sunset (polar)' : formatMinutesToHHMM(mins),
+        },
+      ];
+      if (!isNaN(dlt)) {
+        rows.push({
+          label: 'vs world avg',
+          value: formatDelta(dlt),
+          className: dlt > 0 ? 'later' : 'earlier',
+        });
+      }
+      rows.push({ label: 'Zone', value: grid.tz[grid.tzIdx[i]], className: 'tooltip-tz' });
+      return {
+        title: grid.countries[grid.countryIdx[i]],
+        subtitle: `${Math.abs(grid.lat[i]).toFixed(1)}°${grid.lat[i] >= 0 ? 'N' : 'S'}, ${Math.abs(grid.lon[i]).toFixed(1)}°${grid.lon[i] >= 0 ? 'E' : 'W'}`,
+        rows,
+      };
+    },
+    [sunsetData, grid]
+  );
+
   return (
     <div className="app">
       <header className="app-header">
@@ -76,14 +105,18 @@ function App() {
 
       <main className="app-main">
         <div className="globe-stage">
-          <Globe grid={grid} sunset={sunsetData} colors={colors} />
+          <Globe grid={grid} colors={colors} getDotInfo={getDotInfo} />
           <Legend maxDeltaMinutes={sunsetData?.scaleMax ?? 60} />
         </div>
 
         <Controls
           dayOfYear={dayOfYear}
           dateReadable={dateReadable}
-          avgMinutes={sunsetData?.avgMinutes ?? null}
+          stat={
+            sunsetData
+              ? { label: 'World avg sunset', value: formatMinutesToHHMM(sunsetData.avgMinutes) }
+              : null
+          }
           onDayChange={handleDayChange}
         />
 
@@ -104,7 +137,7 @@ function App() {
             SunCalc
           </a>{' '}
           · no API calls · same every year ·{' '}
-          <a href="/USA">classic US county view</a>
+          <a href="/temp">🌡 temperature view</a> · <a href="/USA">US county view</a>
         </p>
       </footer>
     </div>

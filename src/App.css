@@ -193,6 +193,9 @@ button {
 }
 
 .tooltip.pinned {
+  /* Pinned tooltips are interactive (the Add-to-list button lives here),
+     so they must capture pointer events instead of passing them to the canvas */
+  pointer-events: auto;
   border-color: rgba(251, 191, 36, 0.45);
 }
 

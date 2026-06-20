@@ -16,10 +16,12 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Controls } from './components/Controls';
 import { Globe } from './components/Globe';
 import { Legend } from './components/Legend';
+import { PlacesLink } from './components/PlacesLink';
 import { getLandGrid } from './lib/world';
 import { dayOfYearToISO, formatDateReadable, todayDayOfYear } from './lib/date';
 import { computeGridSunsets, formatMinutesToHHMM, formatDelta, type SunsetData } from './lib/sun';
 import { colorForDelta } from './lib/colors';
+import { useDotList } from './lib/useDotList';
 import type { DotInfo } from './components/Globe';
 import './App.css';
 
@@ -31,6 +33,7 @@ function App() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const grid = useMemo(() => getLandGrid(), []);
+  const dotList = useDotList(grid);
 
   const handleDayChange = useCallback((day: number) => {
     setDayOfYear(day);
@@ -97,6 +100,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
+        <PlacesLink />
         <h1>
           <span className="logo-mark">☀</span> SunMap
         </h1>
@@ -105,7 +109,13 @@ function App() {
 
       <main className="app-main">
         <div className="globe-stage">
-          <Globe grid={grid} colors={colors} getDotInfo={getDotInfo} />
+          <Globe
+            grid={grid}
+            colors={colors}
+            getDotInfo={getDotInfo}
+            isInList={dotList.isInList}
+            onToggleList={dotList.toggle}
+          />
           <Legend maxDeltaMinutes={sunsetData?.scaleMax ?? 60} />
         </div>
 

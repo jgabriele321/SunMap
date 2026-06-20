@@ -15,9 +15,11 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Controls } from '../components/Controls';
 import { Globe, type DotInfo } from '../components/Globe';
 import { TempLegend } from '../components/TempLegend';
+import { PlacesLink } from '../components/PlacesLink';
 import { getLandGrid } from '../lib/world';
 import { dayOfYearToISO, formatDateReadable, todayDayOfYear } from '../lib/date';
 import { computeTempDay, colorForTemp, formatTemp, type TempData } from '../lib/temp';
+import { useDotList } from '../lib/useDotList';
 import '../App.css';
 
 const DEBOUNCE_MS = 80;
@@ -28,6 +30,7 @@ function TempApp() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const grid = useMemo(() => getLandGrid(), []);
+  const dotList = useDotList(grid);
 
   useEffect(() => {
     document.title = 'SunMap — Global Temperatures';
@@ -87,6 +90,7 @@ function TempApp() {
   return (
     <div className="app">
       <header className="app-header">
+        <PlacesLink />
         <h1>
           <span className="logo-mark">🌡</span> SunMap
         </h1>
@@ -95,7 +99,13 @@ function TempApp() {
 
       <main className="app-main">
         <div className="globe-stage">
-          <Globe grid={grid} colors={colors} getDotInfo={getDotInfo} />
+          <Globe
+            grid={grid}
+            colors={colors}
+            getDotInfo={getDotInfo}
+            isInList={dotList.isInList}
+            onToggleList={dotList.toggle}
+          />
           <TempLegend />
         </div>
 

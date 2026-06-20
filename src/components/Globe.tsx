@@ -39,6 +39,10 @@ interface GlobeProps {
   colors: string[] | null;
   /** Build the tooltip content for a dot index (decouples Globe from the dataset) */
   getDotInfo: (index: number) => DotInfo | null;
+  /** Whether a dot is already on the places list (drives the Add/Remove button) */
+  isInList?: (index: number) => boolean;
+  /** Toggle a dot's saved state — shows an "Add to list" button in pinned tooltips */
+  onToggleList?: (index: number) => void;
 }
 
 interface TooltipState {
@@ -56,7 +60,9 @@ const DEFAULT_ZOOM = 1;
 // Cursor must be within ~2.2° of a dot to count as hitting it
 const PICK_COS_THRESHOLD = Math.cos(2.2 * RAD);
 
-export function Globe({ grid, colors, getDotInfo }: GlobeProps) {
+export function Globe({ grid, colors, getDotInfo, isInList, onToggleList }: GlobeProps) {
+  // Bumped when the places list toggles, to re-render the pinned tooltip button
+  const [, bumpList] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -456,6 +462,17 @@ export function Globe({ grid, colors, getDotInfo }: GlobeProps) {
               <span className={`tooltip-value ${row.className ?? ''}`}>{row.value}</span>
             </div>
           ))}
+          {tooltip.pinned && onToggleList && (
+            <button
+              className={`tooltip-add-btn ${isInList?.(tooltip.index) ? 'added' : ''}`}
+              onClick={() => {
+                onToggleList(tooltip.index);
+                bumpList((t) => t + 1);
+              }}
+            >
+              {isInList?.(tooltip.index) ? '✓ On your list — remove' : '+ Add to list'}
+            </button>
+          )}
         </div>
       )}
     </div>

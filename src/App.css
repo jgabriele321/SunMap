@@ -103,6 +103,7 @@ button {
    Header
    ============================================ */
 .app-header {
+  position: relative;
   text-align: center;
   margin-bottom: 1rem;
 }
@@ -493,4 +494,196 @@ button {
   .legend {
     max-width: 100%;
   }
+
+  .places-link {
+    position: static;
+    display: inline-flex;
+    margin-bottom: 0.6rem;
+  }
+
+  .place-date {
+    display: none;
+  }
+}
+
+/* ============================================
+   Places-to-go: header link
+   ============================================ */
+.places-link {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  transition: all 140ms ease;
+}
+
+.places-link:hover {
+  color: var(--text-primary);
+  border-color: var(--glass-highlight);
+}
+
+.places-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #0b0f1d;
+  background: var(--gradient-accent);
+  border-radius: var(--radius-full);
+}
+
+/* ============================================
+   Places-to-go: Add button in tooltip
+   ============================================ */
+.tooltip-add-btn {
+  width: 100%;
+  margin-top: 0.7rem;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #0b0f1d;
+  background: var(--gradient-accent);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: filter 140ms ease;
+}
+
+.tooltip-add-btn:hover {
+  filter: brightness(1.08);
+}
+
+.tooltip-add-btn.added {
+  color: var(--text-secondary);
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--glass-border);
+}
+
+/* ============================================
+   Places-to-go: list page
+   ============================================ */
+.places-empty {
+  text-align: center;
+  color: var(--text-secondary);
+  line-height: 2;
+  margin-top: 2rem;
+}
+
+.places-empty a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.places-list {
+  list-style: none;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.place-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+}
+
+.place-index {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: var(--radius-full);
+}
+
+.place-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.place-country {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.place-coords {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.place-date {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.place-remove {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.place-remove:hover {
+  color: var(--warm);
+  border-color: var(--warm);
+}
+
+.places-clear {
+  display: block;
+  margin: 1.4rem auto 0;
+  padding: 0.45rem 1.1rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.places-clear:hover {
+  color: var(--warm);
+  border-color: var(--warm);
 }

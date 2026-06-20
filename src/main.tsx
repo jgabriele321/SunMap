@@ -12,12 +12,15 @@ const path = window.location.pathname
 const GlobeApp = lazy(() => import('./App'))
 const UsaApp = lazy(() => import('./usa/UsApp'))
 const TempApp = lazy(() => import('./temp/TempApp'))
+const PlacesApp = lazy(() => import('./places/PlacesApp'))
 
 const App = /^\/usa\/?$/i.test(path)
   ? UsaApp
   : /^\/temp\/?$/i.test(path)
     ? TempApp
-    : GlobeApp
+    : /^\/places\/?$/i.test(path)
+      ? PlacesApp
+      : GlobeApp
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
